@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # PostgreSQL база данных
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: otb_db
+      POSTGRES_USER: otb
+      POSTGRES_PASSWORD: 1234
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U otb -d otb_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis кэш
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin для управления базой данных
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Основное приложение бота
+  bot:
+    build: .
+    command: python main_asyncpg.py
+    environment:
+      - TOKEN=${TOKEN}
+      - DATABASE_URL=asyncpg+postgresql://otb:1234@postgres:5432/otb_db
+      - REDIS_URL=redis://redis:6379/0
+      - GOOGLE_CREDENTIALS_JSON=/app/google_credentials.json
+      - SUPERADMIN_ID=922109605
+    volumes:
+      - ./google_credentials.json:/app/google_credentials.json:ro
+      - ./alembic.ini:/app/alembic.ini:ro
+      - ./migration:/app/migration:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  pgadmin_data:

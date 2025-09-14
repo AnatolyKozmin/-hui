@@ -1,0 +1,40 @@
+# Виртуальное окружение
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE файлы
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Логи
+*.log
+
+# Временные файлы
+*.tmp
+*.temp
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Тестовые файлы (исключаем только некоторые)
+# test_*.py
+# *_test.py
+
+# Документация
+*.md
+README*
+
+# Переменные окружения (будут переданы через docker-compose)
+.env

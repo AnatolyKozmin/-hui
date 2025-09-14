@@ -14,7 +14,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .engine import Base
+from .base import Base
 
 
 class SheetKind(enum.Enum):
@@ -35,6 +35,12 @@ class Faculty(Base):
         back_populates="faculty", cascade="all, delete-orphan"
     )
     sheets: Mapped[List[FacultySheet]] = relationship(
+        back_populates="faculty", cascade="all, delete-orphan"
+    )
+    participants: Mapped[List[Participant]] = relationship(
+        back_populates="faculty", cascade="all, delete-orphan"
+    )
+    interviewers: Mapped[List[Interviewer]] = relationship(
         back_populates="faculty", cascade="all, delete-orphan"
     )
 
@@ -101,7 +107,7 @@ class Participant(Base):
         ForeignKey("faculty_sheets.id", ondelete="SET NULL"), nullable=True
     )
 
-    faculty: Mapped[Faculty] = relationship()
+    faculty: Mapped[Faculty] = relationship(back_populates="participants")
     source_sheet: Mapped[Optional[FacultySheet]] = relationship()
 
 
@@ -138,7 +144,7 @@ class Interviewer(Base):
     tg_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True, index=True)
     tg_username: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
 
-    faculty: Mapped[Faculty] = relationship()
+    faculty: Mapped[Faculty] = relationship(back_populates="interviewers")
     sheet: Mapped[FacultySheet] = relationship()
 
 
