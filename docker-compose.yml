@@ -46,6 +46,17 @@ services:
       postgres:
         condition: service_healthy
 
+  # Инициализация базы данных
+  db-init:
+    build: .
+    command: python init_database.py
+    environment:
+      - DATABASE_URL=asyncpg+postgresql://otb:1234@postgres:5432/otb_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   # Основное приложение бота
   bot:
     build: .
@@ -65,6 +76,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     restart: unless-stopped
 
 volumes:
