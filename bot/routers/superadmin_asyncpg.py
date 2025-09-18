@@ -192,7 +192,7 @@ class SuperAdminRouter:
         
         try:
             async with self.db_pool.acquire() as conn:
-                faculties = await conn.fetch("SELECT id, name FROM faculties ORDER BY name")
+                faculties = await conn.fetch("SELECT id, title FROM faculties ORDER BY title")
                 
                 if not faculties:
                     await message.answer("❌ Сначала создайте факультеты", reply_markup=get_admins_keyboard())
@@ -224,18 +224,18 @@ class SuperAdminRouter:
             try:
                 async with self.db_pool.acquire() as conn:
                     admins = await conn.fetch("""
-                        SELECT fa.id, fa.name, fa.telegram_id, f.name as faculty_name
+                        SELECT fa.id, fa.telegram_user_id, f.title as faculty_name
                         FROM faculty_admins fa
                         JOIN faculties f ON fa.faculty_id = f.id
-                        ORDER BY f.name, fa.name
+                        ORDER BY f.title
                     """)
                     
                     if admins:
                         text = "👑 Список администраторов:\n\n"
                         for i, admin in enumerate(admins, 1):
-                            text += f"{i}. {admin['name']}\n"
+                            text += f"{i}. Telegram ID: {admin['telegram_user_id']}\n"
                             text += f"   🏛️ Факультет: {admin['faculty_name']}\n"
-                            text += f"   📱 ID: {admin['telegram_id']}\n\n"
+                            text += f"   📱 ID: {admin['telegram_user_id']}\n\n"
                     else:
                         text = "👑 Администраторы не найдены"
             except Exception as e:
@@ -329,12 +329,12 @@ class SuperAdminRouter:
         else:
             try:
                 async with self.db_pool.acquire() as conn:
-                    faculties = await conn.fetch("SELECT name, description FROM faculties ORDER BY name")
+                    faculties = await conn.fetch("SELECT title, description FROM faculties ORDER BY title")
                     
                     if faculties:
                         text = "📋 Список факультетов:\n\n"
                         for i, faculty in enumerate(faculties, 1):
-                            text += f"{i}. {faculty['name']}\n"
+                            text += f"{i}. {faculty['title']}\n"
                             if faculty['description']:
                                 text += f"   📄 {faculty['description']}\n"
                             text += "\n"
@@ -449,10 +449,10 @@ class SuperAdminRouter:
             
             async with self.db_pool.acquire() as conn:
                 faculty_id = await conn.fetchval("""
-                    INSERT INTO faculties (name, description) 
-                    VALUES ($1, $2)
+                    INSERT INTO faculties (slug, title, description) 
+                    VALUES ($1, $2, $3)
                     RETURNING id
-                """, faculty_name, faculty_description)
+                """, f"faculty-{faculty_name.lower().replace(' ', '-')}", faculty_name, faculty_description)
                 
                 text = (
                     f"✅ Факультет создан успешно!\n\n"
@@ -505,7 +505,7 @@ class SuperAdminRouter:
         
         try:
             async with self.db_pool.acquire() as conn:
-                faculties = await conn.fetch("SELECT id, name FROM faculties ORDER BY name")
+                faculties = await conn.fetch("SELECT id, title FROM faculties ORDER BY title")
                 
                 if not faculties:
                     await message.answer("❌ Сначала создайте факультеты", reply_markup=get_sheets_keyboard())
@@ -514,7 +514,7 @@ class SuperAdminRouter:
                 
                 text = "🏛️ Выберите факультет для привязки таблицы:\n\n"
                 for i, faculty in enumerate(faculties, 1):
-                    text += f"{i}. {faculty['name']}\n"
+                    text += f"{i}. {faculty['title']}\n"
                 
                 await message.answer(text)
                 await state.set_state(SuperAdminStates.waiting_faculty_for_sheet)
@@ -536,7 +536,7 @@ class SuperAdminRouter:
         # Получаем список факультетов
         try:
             async with self.db_pool.acquire() as conn:
-                faculties = await conn.fetch("SELECT id, name FROM faculties ORDER BY name")
+                faculties = await conn.fetch("SELECT id, title FROM faculties ORDER BY title")
                 
                 # Пытаемся найти факультет по номеру или названию
                 faculty = None
@@ -547,7 +547,7 @@ class SuperAdminRouter:
                 except ValueError:
                     # Поиск по названию
                     for f in faculties:
-                        if f['name'].lower() == message.text.lower():
+                        if f['title'].lower() == message.text.lower():
                             faculty = f
                             break
                 
@@ -556,10 +556,10 @@ class SuperAdminRouter:
                     return
                 
                 # Сохраняем ID факультета
-                await state.update_data(faculty_id=faculty['id'], faculty_name=faculty['name'])
+                await state.update_data(faculty_id=faculty['id'], faculty_name=faculty['title'])
                 
                 text = (
-                    f"🏛️ Факультет: {faculty['name']}\n\n"
+                    f"🏛️ Факультет: {faculty['title']}\n\n"
                     "📊 Выберите тип таблицы:\n"
                     "1. ne_opyt - Без опыта\n"
                     "2. opyt - С опытом\n"
@@ -651,7 +651,7 @@ class SuperAdminRouter:
         try:
             async with self.db_pool.acquire() as conn:
                 existing_admin = await conn.fetchval(
-                    "SELECT id FROM faculty_admins WHERE telegram_id = $1", 
+                    "SELECT id FROM faculty_admins WHERE telegram_user_id = $1", 
                     telegram_id
                 )
                 
@@ -699,11 +699,11 @@ class SuperAdminRouter:
         # Получаем список факультетов
         try:
             async with self.db_pool.acquire() as conn:
-                faculties = await conn.fetch("SELECT id, name FROM faculties ORDER BY name")
+                faculties = await conn.fetch("SELECT id, title FROM faculties ORDER BY title")
                 
                 text = f"👤 Имя: {admin_name}\n\n🏛️ Выберите факультет:\n\n"
                 for i, faculty in enumerate(faculties, 1):
-                    text += f"{i}. {faculty['name']}\n"
+                    text += f"{i}. {faculty['title']}\n"
                 
                 await message.answer(text)
                 await state.set_state(SuperAdminStates.waiting_admin_faculty)
@@ -724,7 +724,7 @@ class SuperAdminRouter:
         
         try:
             async with self.db_pool.acquire() as conn:
-                faculties = await conn.fetch("SELECT id, name FROM faculties ORDER BY name")
+                faculties = await conn.fetch("SELECT id, title FROM faculties ORDER BY title")
                 
                 # Пытаемся найти факультет по номеру или названию
                 faculty = None
@@ -735,7 +735,7 @@ class SuperAdminRouter:
                 except ValueError:
                     # Поиск по названию
                     for f in faculties:
-                        if f['name'].lower() == message.text.lower():
+                        if f['title'].lower() == message.text.lower():
                             faculty = f
                             break
                 
@@ -750,16 +750,16 @@ class SuperAdminRouter:
                 
                 # Создаем администратора в базе данных
                 admin_id = await conn.fetchval("""
-                    INSERT INTO faculty_admins (faculty_id, telegram_id, name) 
-                    VALUES ($1, $2, $3)
+                    INSERT INTO faculty_admins (faculty_id, telegram_user_id) 
+                    VALUES ($1, $2)
                     RETURNING id
-                """, faculty['id'], telegram_id, admin_name)
+                """, faculty['id'], telegram_id)
                 
                 text = (
                     f"✅ Администратор назначен успешно!\n\n"
                     f"👤 Имя: {admin_name}\n"
                     f"📱 Telegram ID: {telegram_id}\n"
-                    f"🏛️ Факультет: {faculty['name']}\n"
+                    f"🏛️ Факультет: {faculty['title']}\n"
                     f"🆔 ID: {admin_id}"
                 )
                 
